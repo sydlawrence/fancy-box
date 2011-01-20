@@ -35,6 +35,7 @@
 
 		var matchedGroup = this;
 
+
 		function _initialize() {
 			elem = this;
 			opts = settings;
@@ -106,7 +107,6 @@
 			$("#fancy_right, #fancy_left, #fancy_close, #fancy_title").hide();
 
 			var href = opts.itemArray[ opts.itemCurrent ].href;
-
 			if (href.match(/#/)) {
 				var target = window.location.href.split('#')[0]; target = href.replace(target, ''); target = target.substr(target.indexOf('#'));
 
@@ -151,8 +151,7 @@
 				var width = imagePreloader.width;
 				var height = imagePreloader.height;
 			}
-			
-			_history_push(imagePreloader.src);
+			$.fn.fancybox.historyPush(imagePreloader.src);
 
 			_set_content('<img alt="" id="fancy_img" src="' + imagePreloader.src + '" />', width, height);
 		};
@@ -309,20 +308,8 @@
 			}
 		};
 		
-		function _history_push(url,title) {
-			if (typeof title  == "undefined") 
-				title = "Viewing: "+url;
-	//		alert(url);
-	//		alert(title);
-			window.history.pushState({}, title, url);
-			document.title = title;
-	
-			return false;
-		};
-		
-		function _history_back() {
-		
-		};
+				
+
 
 		function _finish() {	
 			_set_navigation();
@@ -389,6 +376,8 @@
 	$.fn.fancybox.getNumeric = function(el, prop) {
 		return parseInt($.curCSS(el.jquery?el[0]:el,prop,true))||0;
 	};
+	
+	
 
 	$.fn.fancybox.getPosition = function(el) {
 		var pos = el.offset();
@@ -406,6 +395,80 @@
 		$(".fancy_loading").hide();
 		$("#fancy_frame").show();
 	};
+	
+	$.fn.fancybox.historyLocations = [];
+	
+	$.fn.fancybox.historyTitles = []; 
+	
+	
+	
+	$.fn.fancybox.historyListen = function() {
+		window.onpopstate = function(data) {
+			$.fn.fancybox.hasHistoried = true;
+			console.log(data);
+			if (data.state && data.state.fancybox && data.state.fancybox.fancybox && window.location.pathname != $.fn.fancybox.historyLocations[0]) {
+				data.state.fancybox.src;
+		//		$.fn.fancybox.set_content('<img alt="" id="fancy_img" src="' + data.state.src + '" />', 100, 100);
+		//		itemArray			:	[]
+		//		$.fn.fancybox
+				var $a = $('<a href="'+window.location+'"/>');
+				$a.fancybox();
+				$a.click();
+								
+				window.title = data.state.t;
+			}
+			else {
+				if ($("#fancy_outer").is(":visible") !== false) {
+					$.fn.fancybox.close();
+					document.title = $.fn.fancybox.historyTitles[0];
+			//		alert($.fn.fancybox.historyTitles[0]);
+			
+			
+			
+			
+				}
+			}
+			
+		}
+	}
+	
+	$.fn.fancybox.historyPush = function(url,title) {
+		if ($.fn.fancybox.hasHistoried) {
+			$.fn.fancybox.hasHistoried = false;
+			return;
+		}
+		$.fn.fancybox.historyLocations.push(window.location.pathname);
+		$.fn.fancybox.historyTitles.push(document.title);
+
+		if (typeof title  == "undefined") 
+			title = "Viewing: "+url;
+		url = strip_domain(url);
+		// is local file
+		if (url.indexOf('file://') != -1) {	
+			if (this.console && typeof console.log != "undefined")
+				console.log('window.history.pushState does not work with local files');
+			return;
+		}
+		var o = {
+			fancybox:'t',
+			src:window.location,
+			t:window.title
+		};
+		if ($.fn.fancybox.historyLocations.length==1)
+			o.first = true;
+		
+		window.history.pushState({fancybox:o}, title, url);
+		document.title = title;
+
+	};
+	
+	$.fn.fancybox.hasHistoried = false;
+	
+	$.fn.fancybox.historyReset = function() {
+		if (!$.fn.fancybox.hasHistoried)
+			window.history.pushState({fancybox:'t',test:'test'},$.fn.fancybox.historyTitles[0],$.fn.fancybox.historyLocations[0]);
+	}		
+	
 
 	$.fn.fancybox.getViewport = function() {
 		return [$(window).width(), $(window).height(), $(document).scrollLeft(), $(document).scrollTop() ];
@@ -435,7 +498,8 @@
 
 	$.fn.fancybox.close = function() {
 		busy = true;
-
+	
+		$.fn.fancybox.historyReset();
 		$(imagePreloader).unbind();
 
 		$("#fancy_overlay, #fancy_close").unbind();
@@ -498,6 +562,8 @@
 	};
 
 	$.fn.fancybox.build = function() {
+		
+		$.fn.fancybox.historyListen();
 		var html = '';
 
 		html += '<div id="fancy_overlay"></div>';
@@ -563,3 +629,12 @@
 	});
 
 })(jQuery);
+
+function strip_domain(url) {
+			
+			url = url.replace(document.domain,'');
+			url = url.replace('https://','');
+			url = url.replace('http://','');
+			url = url.replace(':8888','');
+			return url;
+		};
